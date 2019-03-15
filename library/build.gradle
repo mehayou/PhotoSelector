@@ -7,7 +7,7 @@ android {
         minSdkVersion 15
         targetSdkVersion 28
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
     }
 
     buildTypes {
@@ -24,13 +24,9 @@ dependencies {
 }
 
 allprojects {
-    tasks.withType(Javadoc) {
-        options.addStringOption('Xdoclint:none', '-quiet')
-        options.addStringOption('encoding', 'UTF-8')
+    tasks.withType(Javadoc).all {
+        enabled = false
     }
-//    tasks.withType(Javadoc).all {
-//        enabled = false
-//    }
 }
 
 publish {
