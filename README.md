@@ -28,15 +28,13 @@ implementation 'com.mehayou:photoselector:releases'
 ```
 
 ## 使用方法
-#### 实例化
-```java
-PhotoSelector selector = new PhotoSelector.Builder(this, this).build();
-```
-或更改默认参数进行实例化（以下配置都是默认参数）：
+#### 更改默认参数进行实例化（以下配置都是默认参数）：
 ```java
 PhotoSelector selector = new PhotoSelector.Builder(this, this)
         .setRequestCode(81, 82, 80) // Activity回调请求码，互不相等才有效
-        .setCompress(true) // 是否开启压缩功能
+        .setRecycle(true, true, true) // 是否回收拍照、裁剪、压缩图片
+        .setCompress(false) // 是否开启压缩功能
+        .setCompressCallback(null) // 压缩回调监听
         .setCompressImageSize(1080) // 压缩图片分辨率大小，为0则不压缩，单位px
         .setCompressFileSize(200 << 10) // 压缩文件大小，为0则不压缩，单位byte
         .setCompressFormat(Bitmap.CompressFormat.JPEG) // 压缩输出格式，PNG不支持压缩文件大小
@@ -74,41 +72,43 @@ selector.toGallery();
 selector.toCamera();
 // 去相册
 selector.toGallery();
-// 回收当前被裁剪/压缩后的图片文件（原图片文件保留）
+// 回收拍照、裁剪、压缩后的图片文件（相册原图片文件保留）
 selector.recycle();
 // 是否正在压缩图片
 selector.isCompressing();
 ```
 
 #### 回调
-若没有启用压缩功能，则不会回调压缩方法，仅回调结果
+结果回调
 ```java
-PhotoSelector.Callback callback = new PhotoSelector.Callback() {
-    /**
-     * 开始压缩
-     * @param srcFile 原图片文件
-     */
-    @Override
-    public void onCompressStart(File srcFile) {
-    }
-
-    /**
-     * 完成压缩
-     * @param srcFile 原图片文件
-     * @param outFile 压缩后图片（存在没有进行压缩，即为null）
-     */
-    @Override
-    public void onCompressComplete(File srcFile, File outFile) {
-    }
-
+new PhotoSelector.ResultCallback() {
     /**
      * 结果回调
-     * @param file 最终图片文件
-     * @return 是否回收当前被裁剪/压缩后的图片文件（原图片文件保留）
+     * @param bytes 图片文件字节
      */
     @Override
-    public boolean onImageResult(File file) {
-        return false;
+    public void onImageResult(byte[] bytes) {
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        imageView.setImageBitmap(bitmap);
+    }
+};
+```
+压缩回调
+```java
+new PhotoSelector.CompressCallback() {
+    /**
+     * 压缩开始
+     */
+    @Override
+    public void onCompressStart() {
+    }
+
+    /**
+     * 压缩完成
+     * @param compress 是否进行了压缩（存在直出，没有进行压缩）
+     */
+    @Override
+    public void onCompressComplete(boolean compress) {
     }
 };
 ```

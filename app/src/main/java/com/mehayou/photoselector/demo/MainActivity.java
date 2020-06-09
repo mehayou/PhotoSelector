@@ -27,6 +27,10 @@ public class MainActivity extends AppCompatActivity implements
     private ImageView mImageView;
     private ProgressBar mProgressBar;
 
+    private CheckBox cbRecycleCamera;
+    private CheckBox cbRecycleCrop;
+    private CheckBox cbRecycleCompress;
+
     private CheckBox cbFormat;
 
     private CheckBox cbCompress;
@@ -74,6 +78,10 @@ public class MainActivity extends AppCompatActivity implements
         findViewById(R.id.image_gallery).setOnClickListener(this);
         findViewById(R.id.image_recycle).setOnClickListener(this);
 
+        cbRecycleCamera = findViewById(R.id.cb_recycle_camera);
+        cbRecycleCrop = findViewById(R.id.cb_recycle_crop);
+        cbRecycleCompress = findViewById(R.id.cb_recycle_compress);
+
         cbFormat = findViewById(R.id.cb_format);
         cbCompress = findViewById(R.id.cb_compress);
         etMaxDpi = findViewById(R.id.et_compress_max_dpi);
@@ -87,9 +95,15 @@ public class MainActivity extends AppCompatActivity implements
         mBuilder = new PhotoSelector.Builder(this, this);
         mPhotoSelector = mBuilder.build();
 
+        cbRecycleCamera.setOnCheckedChangeListener(this);
+        cbRecycleCrop.setOnCheckedChangeListener(this);
+        cbRecycleCompress.setOnCheckedChangeListener(this);
         cbFormat.setOnCheckedChangeListener(this);
         cbCompress.setOnCheckedChangeListener(this);
         cbCrop.setOnCheckedChangeListener(this);
+        cbRecycleCamera.setChecked(true);
+        cbRecycleCrop.setChecked(true);
+        cbRecycleCompress.setChecked(true);
         cbFormat.setChecked(true);
         cbCompress.setChecked(true);
         onCheckedChanged(cbCrop, false);
@@ -186,6 +200,11 @@ public class MainActivity extends AppCompatActivity implements
             case R.id.cb_crop:
                 loadCropValue();
                 break;
+            case R.id.cb_recycle_camera:
+            case R.id.cb_recycle_crop:
+            case R.id.cb_recycle_compress:
+                mBuilder.setRecycle(cbRecycleCamera.isChecked(), cbRecycleCrop.isChecked(), cbRecycleCompress.isChecked());
+                break;
             default:
                 break;
         }
@@ -243,8 +262,8 @@ public class MainActivity extends AppCompatActivity implements
         if (bytes != null) {
             show("[result]");
             show("bytes=" + bytes.length);
-            Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            mImageView.setImageBitmap(bmp);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            mImageView.setImageBitmap(bitmap);
         }
     }
 }
