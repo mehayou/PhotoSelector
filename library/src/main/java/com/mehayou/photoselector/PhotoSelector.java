@@ -22,6 +22,7 @@ import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -40,8 +41,10 @@ public class PhotoSelector {
     }
 
     private Tools mTools;
-    // 初始的Uri
-    private Uri mSourceUri;
+    // 拍照的Uri
+    private Uri mCameraUri;
+    // 相册的Uri
+    private Uri mGalleryUri;
     // 裁剪的Uri
     private Uri mCropUri;
     //压缩生成的文件
@@ -75,23 +78,30 @@ public class PhotoSelector {
      * 去拍照
      */
     public void toCamera() {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            this.mSourceUri = this.mTools.getCameraUri(getContext(), new File(this.mBuilder.directory, getFileName()));
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, mSourceUri);
+        ResultCallback resultCallback = this.mBuilder.resultCallback;
+        if (resultCallback != null) {
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+                this.mGalleryUri = null;
+                this.mCameraUri = this.mTools.getCameraUri(getContext(), new File(this.mBuilder.directory, getFileName()));
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, this.mCameraUri);
+            }
+            startActivityForResult(intent, this.mBuilder.camera_request_code);
+            logger("-> toCamera");
         }
-        startActivityForResult(intent, this.mBuilder.camera_request_code);
-        logger("-> toCamera");
     }
 
     /**
      * 去相册
      */
     public void toGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK);
-        intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
-        startActivityForResult(intent, this.mBuilder.gallery_request_code);
-        logger("-> toGallery");
+        ResultCallback resultCallback = this.mBuilder.resultCallback;
+        if (resultCallback != null) {
+            Intent intent = new Intent(Intent.ACTION_PICK);
+            intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
+            startActivityForResult(intent, this.mBuilder.gallery_request_code);
+            logger("-> toGallery");
+        }
     }
 
     /**
@@ -110,7 +120,7 @@ public class PhotoSelector {
         if (fileName == null || fileName.isEmpty()) {
             fileName = String.valueOf(System.currentTimeMillis());
         }
-        return fileName + this.mBuilder.getFileSuffix();
+        return "PS_".concat(fileName).concat(this.mBuilder.getFileSuffix());
     }
 
     /**
@@ -120,12 +130,12 @@ public class PhotoSelector {
         if (null != this.mCropUri) {
             try {
                 File cropFile = new File(new URI(this.mCropUri.toString()));
-                logger("\n-How much CropFile size and path? \n-Is "
+                logger("-How much CropFile size and path? -Is "
                         + (cropFile.length() / 1024)
                         + "KB, and absolute path is "
                         + cropFile.getAbsolutePath());
                 boolean isDeleteCropFile = cropFile.delete();
-                logger("\n-CropFile is delete? -" + isDeleteCropFile);
+                logger("-CropFile is delete? -" + isDeleteCropFile);
                 // 刷新扫描裁剪图片文件
                 this.mTools.scanFileAsync(getContext(), this.mCropUri);
                 this.mCropUri = null;
@@ -140,15 +150,35 @@ public class PhotoSelector {
      */
     private void recycleCompress() {
         if (null != this.mCompressFile && this.mCompressFile.exists()) {
-            logger("\n-How much CompressFile size and path? \n-Is "
+            logger("-How much CompressFile size and path? -Is "
                     + (this.mCompressFile.length() / 1024)
                     + "KB, and absolute path is "
                     + this.mCompressFile.getAbsolutePath());
             boolean isDeleteCompressFile = this.mCompressFile.delete();
-            logger("\n-CompressFile is delete? -" + isDeleteCompressFile);
+            logger("-CompressFile is delete? -" + isDeleteCompressFile);
             // 刷新扫描压缩图片文件
             this.mTools.scanFileAsync(getContext(), this.mCompressFile);
             this.mCompressFile = null;
+        }
+    }
+
+    /**
+     * 回收拍照图片文件
+     */
+    private void recycleCamera() {
+        if (this.mCameraUri != null) {
+            File file = this.mTools.uriToFile(getContext(), this.mCameraUri);
+            if (null != file && file.exists()) {
+                logger("-How much CameraFile size and path? -Is "
+                        + (file.length() / 1024)
+                        + "KB, and absolute path is "
+                        + file.getAbsolutePath());
+                boolean isDeleteCameraFile = file.delete();
+                logger("-CameraFile is delete? -" + isDeleteCameraFile);
+                // 刷新扫描压缩图片文件
+                this.mTools.scanFileAsync(getContext(), file);
+            }
+            this.mCameraUri = null;
         }
     }
 
@@ -158,8 +188,9 @@ public class PhotoSelector {
     public void recycle() {
         recycleCrop();
         recycleCompress();
-        if (this.mSourceUri != null) {
-            this.mSourceUri = null;
+        recycleCamera();
+        if (this.mGalleryUri != null) {
+            this.mGalleryUri = null;
         }
     }
 
@@ -170,7 +201,8 @@ public class PhotoSelector {
         try {
             Context context = getContext();
             this.mTools.scanFileAsync(context, this.mCropUri);
-            this.mTools.scanFileAsync(context, this.mSourceUri);
+            this.mTools.scanFileAsync(context, this.mCameraUri);
+            //this.mTools.scanFileAsync(context, this.mGalleryUri);
             this.mTools.scanFileAsync(context, this.mCompressFile);
         } catch (Exception e) {
             e.printStackTrace();
@@ -246,11 +278,11 @@ public class PhotoSelector {
             // 拍照回调
             this.mCompressFile = null;
             if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                if (this.mSourceUri != null) {
+                if (this.mCameraUri != null) {
                     if (isCrop()) {
                         // 截图处理
                         this.mCropUri = Uri.fromFile(new File(this.mBuilder.directory, getFileName()));
-                        cropImageFromUri(this.mSourceUri, this.mCropUri);
+                        cropImageFromUri(this.mCameraUri, this.mCropUri);
                     } else {
                         onActivityResult(this.mBuilder.result_request_code, resultCode, data);
                     }
@@ -262,11 +294,12 @@ public class PhotoSelector {
             // 相册回调
             this.mCompressFile = null;
             if (null != data) {
-                this.mSourceUri = data.getData();
+                this.mCameraUri = null;
+                this.mGalleryUri = data.getData();
                 if (isCrop()) {
                     // 截图处理
                     this.mCropUri = Uri.fromFile(new File(this.mBuilder.directory, getFileName()));
-                    cropImageFromUri(this.mSourceUri, this.mCropUri);
+                    cropImageFromUri(this.mGalleryUri, this.mCropUri);
                 } else {
                     onActivityResult(this.mBuilder.result_request_code, resultCode, data);
                 }
@@ -275,56 +308,57 @@ public class PhotoSelector {
             }
         } else if (this.mBuilder.result_request_code == requestCode) {
             // 最终回调
-            Callback callback = this.mBuilder.callback;
-            if (callback != null) {
-                File srcFile = null;
-                if (isCrop() && this.mCropUri != null) {
-                    srcFile = this.mTools.uriToFile(getContext(), this.mCropUri);
-                } else if (!isCrop() && this.mSourceUri != null) {
-                    srcFile = this.mTools.uriToFile(getContext(), this.mSourceUri);
+            File srcFile = null;
+            if (isCrop() && this.mCropUri != null) {
+                srcFile = this.mTools.uriToFile(getContext(), this.mCropUri);
+            } else if (!isCrop()) {
+                if (this.mCameraUri != null) {
+                    srcFile = this.mTools.uriToFile(getContext(), this.mCameraUri);
+                } else if (this.mGalleryUri != null) {
+                    srcFile = this.mTools.uriToFile(getContext(), this.mGalleryUri);
                 }
-
-                if (srcFile != null && srcFile.exists() && srcFile.length() > 0) {
-                    boolean isCompressSize = this.mBuilder.isCompressSize();
-                    boolean isCompressQuality = this.mBuilder.isCompressQuality();
-                    if (isCompressSize || (isCompressQuality && srcFile.length() > this.mBuilder.compressFileSize)) {
-                        // 压缩分辨率大小 || (压缩文件大小 && 文件大小不满足要求)
-                        File outFile = new File(this.mBuilder.directory, getFileName());
-                        // 不压缩赋值为0
-                        int pxSize = isCompressSize ? this.mBuilder.compressImageSize : 0;
-                        long byteSize = isCompressQuality ? this.mBuilder.compressFileSize : 0;
-                        Bitmap.CompressFormat format = this.mBuilder.compressFormat;
-                        // 执行压缩操作
-                        AsyncCompress.run(this, srcFile, outFile, pxSize, byteSize, format);
-                    } else {
-                        // 不用压缩，直接返回
-                        onImageResult(srcFile);
-                    }
-                } else {
-                    // 异常，回收图片文件
-                    recycle();
-                }
-                // 刷新扫描媒体文件
-                scanFileAsync();
             }
+
+            if (srcFile != null && srcFile.exists() && srcFile.length() > 0) {
+                boolean isCompressSize = this.mBuilder.isCompressSize();
+                boolean isCompressQuality = this.mBuilder.isCompressQuality();
+                if (isCompressSize || (isCompressQuality && srcFile.length() > this.mBuilder.compressFileSize)) {
+                    // 压缩分辨率大小 || (压缩文件大小 && 文件大小不满足要求)
+                    File outFile = new File(this.mBuilder.directory, getFileName());
+                    // 不压缩赋值为0
+                    int pxSize = isCompressSize ? this.mBuilder.compressImageSize : 0;
+                    long byteSize = isCompressQuality ? this.mBuilder.compressFileSize : 0;
+                    Bitmap.CompressFormat format = this.mBuilder.compressFormat;
+                    // 执行压缩操作
+                    AsyncCompress.run(this, srcFile, outFile, pxSize, byteSize, format);
+                } else {
+                    // 不用压缩，直接返回
+                    onImageResult(srcFile);
+                }
+            } else {
+                // 异常，回收图片文件
+                recycle();
+            }
+            // 刷新扫描媒体文件
+            scanFileAsync();
         }
     }
 
     private void onCompressStart(File srcFile) {
         logger("[Compress Start] SrcFile=" + srcFile);
         mCompressing = true;
-        Callback callback = mBuilder.callback;
-        if (callback != null) {
-            callback.onCompressStart(srcFile);
+        CompressCallback compressCallback = mBuilder.compressCallback;
+        if (compressCallback != null) {
+            compressCallback.onCompressStart();
         }
     }
 
     private void onCompressComplete(File srcFile, File outFile) {
         logger("[Compress Complete] SrcFile=" + srcFile + ", OutFile=" + outFile);
         mCompressing = false;
-        Callback callback = mBuilder.callback;
-        if (callback != null) {
-            callback.onCompressComplete(srcFile, outFile);
+        CompressCallback compressCallback = mBuilder.compressCallback;
+        if (compressCallback != null) {
+            compressCallback.onCompressComplete(outFile != null);
         }
         mCompressFile = outFile;
         if (isCrop()
@@ -341,8 +375,10 @@ public class PhotoSelector {
 
     private void onImageResult(File file) {
         logger("[Result] File=" + file);
-        Callback callback = mBuilder.callback;
-        if (callback != null && callback.onImageResult(file)) {
+        ResultCallback resultCallback = mBuilder.resultCallback;
+        if (resultCallback != null) {
+            byte[] bytes = this.mTools.readBytesFromFile(file);
+            resultCallback.onImageResult(bytes);
             // 回收图片文件
             recycle();
         }
@@ -368,27 +404,40 @@ public class PhotoSelector {
         private Context context;
         private Activity activity;
         private Fragment fragment;
-        private Callback callback;
+
+        private CompressCallback compressCallback;
+        private ResultCallback resultCallback;
 
         private int camera_request_code = 81;
         private int gallery_request_code = 82;
         private int result_request_code = 80;
 
-        public Builder(Activity activity, Callback callback) {
+        public Builder(Activity activity, ResultCallback callback) {
             this.activity = activity;
             this.context = activity;
-            this.callback = callback;
+            this.resultCallback = callback;
         }
 
-        public Builder(Fragment fragment, Callback callback) {
+        public Builder(Fragment fragment, ResultCallback callback) {
             this.fragment = fragment;
             this.activity = fragment.getActivity();
             this.context = fragment.getContext();
-            this.callback = callback;
+            this.resultCallback = callback;
         }
 
         public PhotoSelector build() {
             return new PhotoSelector(this);
+        }
+
+        /**
+         * 压缩回调
+         *
+         * @param callback 结果回调
+         * @return this
+         */
+        public Builder setCompressCallback(CompressCallback callback) {
+            this.compressCallback = callback;
+            return this;
         }
 
         /**
@@ -555,7 +604,8 @@ public class PhotoSelector {
                     ", context=" + context +
                     ", activity=" + activity +
                     ", fragment=" + fragment +
-                    ", callback=" + callback +
+                    ", resultCallback=" + resultCallback +
+                    ", compressCallback=" + compressCallback +
                     '}';
         }
     }
@@ -644,7 +694,7 @@ public class PhotoSelector {
                         int outHeight = options.outHeight;
                         // 设置缩放比例
                         options.inSampleSize = computeSampleSize(outWidth, outHeight, pxSize);
-                        logger("\n-How much compress sample size? -" + options.inSampleSize);
+                        logger("-How much compress sample size? -" + options.inSampleSize);
                         // 缩放比例为1，则无需压缩分辨率
                         if (options.inSampleSize <= 1) {
                             options = null;
@@ -690,7 +740,7 @@ public class PhotoSelector {
                         if (!bitmap.isRecycled()) {
                             bitmap.recycle();
                         }
-                        logger("\n-How much compress quality? -" + quality);
+                        logger("-How much compress quality? -" + quality);
                         if (quality >= 0) {
                             fos = new FileOutputStream(outFile);
                             fos.write(baos.toByteArray());
@@ -841,6 +891,36 @@ public class PhotoSelector {
         }
 
         /**
+         * 文件转字节数组
+         *
+         * @param file 文件
+         * @return 字节数组
+         */
+        private byte[] readBytesFromFile(File file) {
+            byte[] bytes = null;
+            if (file != null && file.exists()) {
+                FileInputStream fis = null;
+                try {
+                    bytes = new byte[(int) file.length()];
+                    //read file into bytes[]
+                    fis = new FileInputStream(file);
+                    fis.read(bytes);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if (fis != null) {
+                        try {
+                            fis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+            return bytes;
+        }
+
+        /**
          * 刷新扫描媒体文件
          *
          * @param context context
@@ -900,29 +980,28 @@ public class PhotoSelector {
         }
     }
 
-    public interface Callback {
+    public interface CompressCallback {
 
         /**
          * 压缩开始
-         *
-         * @param srcFile 原图片文件
          */
-        void onCompressStart(File srcFile);
+        void onCompressStart();
 
         /**
          * 压缩结束
          *
-         * @param srcFile 原图片文件
-         * @param outFile 压缩后图片（存在没有进行压缩，即为null）
+         * @param compress 是否进行了压缩
          */
-        void onCompressComplete(File srcFile, File outFile);
+        void onCompressComplete(boolean compress);
+    }
+
+    public interface ResultCallback {
 
         /**
          * 图片回调
          *
-         * @param file 图片文件
-         * @return 是否回收当前被裁剪/压缩后的图片文件（原图片文件保留）
+         * @param bytes 图片文件字节
          */
-        boolean onImageResult(File file);
+        void onImageResult(byte[] bytes);
     }
 }

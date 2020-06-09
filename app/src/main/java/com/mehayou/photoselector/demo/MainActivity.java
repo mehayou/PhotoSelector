@@ -3,9 +3,8 @@ package com.mehayou.photoselector.demo;
 import android.Manifest;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.PorterDuff;
-import android.media.ExifInterface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -21,10 +20,8 @@ import android.widget.TextView;
 
 import com.mehayou.photoselector.PhotoSelector;
 
-import java.io.File;
-import java.io.IOException;
-
-public class MainActivity extends AppCompatActivity implements PhotoSelector.Callback,
+public class MainActivity extends AppCompatActivity implements
+        PhotoSelector.ResultCallback, PhotoSelector.CompressCallback,
         View.OnClickListener, CompoundButton.OnCheckedChangeListener {
 
     private ImageView mImageView;
@@ -56,7 +53,7 @@ public class MainActivity extends AppCompatActivity implements PhotoSelector.Cal
     private int outputY = 0;
 
     private int maxDpi = 1080;
-    private int maxSize = 500;
+    private int maxSize = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,6 +130,7 @@ public class MainActivity extends AppCompatActivity implements PhotoSelector.Cal
         mBuilder.setCompress(isChecked);
         mBuilder.setCompressImageSize(maxDpi);
         mBuilder.setCompressFileSize(maxSize << 10);
+        mBuilder.setCompressCallback(isChecked ? this : null);
     }
 
     private int getValue(TextView view, int last, int min, int max, boolean isChecked) {
@@ -229,47 +227,24 @@ public class MainActivity extends AppCompatActivity implements PhotoSelector.Cal
     }
 
     @Override
-    public void onCompressStart(File srcFile) {
+    public void onCompressStart() {
         mProgressBar.setVisibility(View.VISIBLE);
-        int degree = 0;
-        try {
-            ExifInterface exifInterface = new ExifInterface(srcFile.getPath());
-            int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION,
-                    ExifInterface.ORIENTATION_NORMAL);
-            switch (orientation) {
-                case ExifInterface.ORIENTATION_ROTATE_90:
-                    degree = 90;
-                    break;
-                case ExifInterface.ORIENTATION_ROTATE_180:
-                    degree = 180;
-                    break;
-                case ExifInterface.ORIENTATION_ROTATE_270:
-                    degree = 270;
-                    break;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        show("[start]");
-        show("srcFile=" + srcFile);
-        show("degree=" + degree);
+        show("[compress] Start");
     }
 
     @Override
-    public void onCompressComplete(File srcFile, File outFile) {
+    public void onCompressComplete(boolean compress) {
         mProgressBar.setVisibility(View.GONE);
-        show("[complete]");
-        show("srcFile=" + srcFile);
-        show("outFile=" + outFile);
+        show("[compress] Complete=" + compress);
     }
 
     @Override
-    public boolean onImageResult(File file) {
-        if (file != null) {
+    public void onImageResult(byte[] bytes) {
+        if (bytes != null) {
             show("[result]");
-            show("file=" + file);
-            mImageView.setImageURI(Uri.fromFile(file));
+            show("bytes=" + bytes.length);
+            Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            mImageView.setImageBitmap(bmp);
         }
-        return false;
     }
 }
