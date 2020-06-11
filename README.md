@@ -6,9 +6,9 @@
 #### 介绍
 调用系统相机相册，拍摄照片、选取图片，进行裁剪、压缩处理图片。
 * 简单、实用、方便
-* 适配已知系统版本问题
+* 适配已知系统版本问题（API15~30）
+* 系统相册媒体库显示刷新（拍照、裁剪、压缩后的图片）
 * 异步处理压缩图片
-* 相册显示拍照/裁剪/压缩后的图片
 * 校正拍照后图片角度被旋转
 
 ## 依赖
@@ -27,22 +27,23 @@ implementation 'com.mehayou:photoselector:releases'
 </dependency>
 ```
 
-## 使用方法
-#### 申请权限
+## 权限申请
+* 在AndroidManifest.xml中添加申明相机、读写权限，如下：
 ```xml
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.CAMERA" />
 ```
-Android6.0及以上，即API23时，需要手动申请相机、读写权限，示例如下，请自行完善：
+* Android6.0（即API23）及以上时，需要手动申请相机、读写权限，示例如下，请自行完善：
 ```java
 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
 ```
-Android10及以上，即API29时，需要申明访问公共外部存储权限，在AndroidManifest.xml中，application节点下添加：
+* Android10（即API29）及以上时，需要申明访问公共外部存储权限，在AndroidManifest.xml中，application节点下添加：
 ```xml
 android:requestLegacyExternalStorage="true"
 ```
 
+## 使用方法
 #### 更改默认参数进行实例化（以下配置都是默认参数）：
 ```java
 PhotoSelector selector = new PhotoSelector.Builder(this, this)
@@ -116,6 +117,7 @@ new PhotoSelector.CompressCallback() {
      */
     @Override
     public void onCompressStart() {
+        //loading start
     }
 
     /**
@@ -124,6 +126,15 @@ new PhotoSelector.CompressCallback() {
      */
     @Override
     public void onCompressComplete(boolean compress) {
+        //loading complete
     }
 };
 ```
+
+## 版本说明
+#### v1.0.1
+防止拍照、裁剪、压缩图片生成占用存储空间，新增回收机制，“无感”获取图片。
+* 新增配置是否回收拍照、裁剪、压缩图片
+* 修改默认不开启压缩
+* 修改压缩回调单独配置
+* 修改结果回调返回byte字节数组
