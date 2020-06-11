@@ -1,10 +1,12 @@
 package com.mehayou.photoselector;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,7 +19,9 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.PermissionChecker;
 import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
@@ -28,7 +32,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class PhotoSelector {
@@ -76,11 +82,11 @@ public class PhotoSelector {
     }
 
     /**
-     * 去拍照
+     * 去相机
      */
     public void toCamera() {
         ResultCallback resultCallback = this.mBuilder.resultCallback;
-        if (resultCallback != null) {
+        if (resultCallback != null && requestPermission(this.mBuilder.camera_request_code)) {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
                 this.mGalleryUri = null;
@@ -99,7 +105,7 @@ public class PhotoSelector {
      */
     public void toGallery() {
         ResultCallback resultCallback = this.mBuilder.resultCallback;
-        if (resultCallback != null) {
+        if (resultCallback != null && requestPermission(this.mBuilder.gallery_request_code)) {
             Intent intent = new Intent(Intent.ACTION_PICK);
             intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
             startActivityForResult(intent, this.mBuilder.gallery_request_code);
@@ -376,6 +382,87 @@ public class PhotoSelector {
         }
     }
 
+    /**
+     * 申请权限
+     *
+     * @param requestCode 请求码
+     */
+    private boolean requestPermission(int requestCode) {
+        boolean hasSelfPermissions = true;
+        Context context = this.mBuilder.context;
+        if (context != null) {
+            String[] permissions;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+            } else {
+                permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            }
+            for (String permission : permissions) {
+                int check = PermissionChecker.checkSelfPermission(context, permission);
+                if (check != PackageManager.PERMISSION_GRANTED) {
+                    hasSelfPermissions = false;
+                    break;
+                }
+            }
+            if (!hasSelfPermissions) {
+                if (this.mBuilder.fragment != null) {
+                    this.mBuilder.fragment.requestPermissions(permissions, requestCode);
+                } else if (this.mBuilder.activity != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        this.mBuilder.activity.requestPermissions(permissions, requestCode);
+                    } else {
+                        ActivityCompat.requestPermissions(this.mBuilder.activity, permissions, requestCode);
+                    }
+                }
+            }
+        }
+        return hasSelfPermissions;
+    }
+
+    /**
+     * 申请权限回调
+     *
+     * @param requestCode  请求码
+     * @param permissions  权限
+     * @param grantResults 结果
+     */
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (permissions == null || permissions.length <= 0 || grantResults == null || grantResults.length <= 0) {
+            return;
+        }
+        if (this.mBuilder.camera_request_code == requestCode
+                || this.mBuilder.gallery_request_code == requestCode) {
+            List<String> deniedPermissionList = null;
+            for (int i = 0; i < Math.min(permissions.length, grantResults.length); i++) {
+                int result = grantResults[i];
+                String permission = permissions[i];
+                if (PackageManager.PERMISSION_GRANTED != result) {
+                    if (deniedPermissionList == null) {
+                        deniedPermissionList = new ArrayList<>();
+                    }
+                    deniedPermissionList.add(permission);
+                }
+            }
+            if (deniedPermissionList != null && !deniedPermissionList.isEmpty()) {
+                if (BuildConfig.DEBUG) {
+                    logger("[Permission] request denied - " + deniedPermissionList.toString()
+                            .replace("[", "")
+                            .replace("]", "")
+                            .replace(" ", ""));
+                }
+                if (this.mBuilder.permissionCallback != null) {
+                    this.mBuilder.permissionCallback.onPermissionDenied(deniedPermissionList);
+                }
+            } else if (this.mBuilder.camera_request_code == requestCode) {
+                // 去相机
+                toCamera();
+            } else if (this.mBuilder.gallery_request_code == requestCode) {
+                // 去相册
+                toGallery();
+            }
+        }
+    }
+
     private void onCompressStart(File srcFile) {
         if (BuildConfig.DEBUG) {
             logger("[Compress Start] SrcFile=" + srcFile);
@@ -447,19 +534,32 @@ public class PhotoSelector {
         private Activity activity;
         private Fragment fragment;
 
-        private CompressCallback compressCallback;
         private ResultCallback resultCallback;
+        private CompressCallback compressCallback;
+        private PermissionCallback permissionCallback;
 
         private int camera_request_code = 81;
         private int gallery_request_code = 82;
         private int result_request_code = 80;
 
+        /**
+         * PhotoSelector.Builder
+         *
+         * @param activity activity
+         * @param callback 结果回调
+         */
         public Builder(Activity activity, ResultCallback callback) {
             this.activity = activity;
             this.context = activity;
             this.resultCallback = callback;
         }
 
+        /**
+         * PhotoSelector.Builder
+         *
+         * @param fragment fragment
+         * @param callback 结果回调
+         */
         public Builder(Fragment fragment, ResultCallback callback) {
             this.fragment = fragment;
             this.activity = fragment.getActivity();
@@ -467,6 +567,11 @@ public class PhotoSelector {
             this.resultCallback = callback;
         }
 
+        /**
+         * 构建选择器
+         *
+         * @return PhotoSelector
+         */
         public PhotoSelector build() {
             return new PhotoSelector(this);
         }
@@ -485,6 +590,17 @@ public class PhotoSelector {
                 this.gallery_request_code = gallery;
                 this.result_request_code = result;
             }
+            return this;
+        }
+
+        /**
+         * 申请权限回调
+         *
+         * @param callback 申请权限回调
+         * @return this
+         */
+        public Builder setPermissionCallback(PermissionCallback callback) {
+            this.permissionCallback = callback;
             return this;
         }
 
@@ -577,7 +693,7 @@ public class PhotoSelector {
         /**
          * 压缩回调
          *
-         * @param callback 结果回调
+         * @param callback 压缩回调
          * @return this
          */
         public Builder setCompressCallback(CompressCallback callback) {
@@ -1049,6 +1165,16 @@ public class PhotoSelector {
         }
     }
 
+    public interface ResultCallback {
+
+        /**
+         * 图片回调
+         *
+         * @param bytes 图片文件字节
+         */
+        void onImageResult(byte[] bytes);
+    }
+
     public interface CompressCallback {
 
         /**
@@ -1064,13 +1190,11 @@ public class PhotoSelector {
         void onCompressComplete(boolean compress);
     }
 
-    public interface ResultCallback {
+    public interface PermissionCallback {
 
         /**
-         * 图片回调
-         *
-         * @param bytes 图片文件字节
+         * 申请被拒的权限
          */
-        void onImageResult(byte[] bytes);
+        void onPermissionDenied(List<String> permissions);
     }
 }

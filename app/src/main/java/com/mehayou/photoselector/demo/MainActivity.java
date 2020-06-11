@@ -1,12 +1,11 @@
 package com.mehayou.photoselector.demo;
 
-import android.Manifest;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PorterDuff;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.View;
@@ -20,9 +19,13 @@ import android.widget.TextView;
 
 import com.mehayou.photoselector.PhotoSelector;
 
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity implements
-        PhotoSelector.ResultCallback, PhotoSelector.CompressCallback,
-        View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+        View.OnClickListener, CompoundButton.OnCheckedChangeListener,
+        PhotoSelector.ResultCallback,
+        PhotoSelector.CompressCallback,
+        PhotoSelector.PermissionCallback {
 
     private ImageView mImageView;
     private ProgressBar mProgressBar;
@@ -64,9 +67,6 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
-
         mImageView = findViewById(R.id.image_view);
         mProgressBar = findViewById(R.id.progress_bar);
         mScrollView = findViewById(R.id.scroll_view);
@@ -93,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements
         etAspectY = findViewById(R.id.et_crop_aspect_y);
 
         mBuilder = new PhotoSelector.Builder(this, this);
+        mBuilder.setPermissionCallback(this);
         mPhotoSelector = mBuilder.build();
 
         cbRecycleCamera.setOnCheckedChangeListener(this);
@@ -243,6 +244,20 @@ public class MainActivity extends AppCompatActivity implements
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         mPhotoSelector.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        mPhotoSelector.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    @Override
+    public void onPermissionDenied(List<String> permissions) {
+        show("[Permission] request denied - " + permissions.toString()
+                .replace("[", "")
+                .replace("]", "")
+                .replace(" ", ""));
     }
 
     @Override
