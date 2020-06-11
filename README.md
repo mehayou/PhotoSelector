@@ -36,7 +36,7 @@ implementation 'com.mehayou:photoselector:releases'
 ```
 Android6.0及以上手机，需要手动申请权限，示例如下，请自行完善：
 ```java
-ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
 ```
 
 #### 更改默认参数进行实例化（以下配置都是默认参数）：
