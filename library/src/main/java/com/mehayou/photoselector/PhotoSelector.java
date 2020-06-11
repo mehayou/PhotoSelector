@@ -29,6 +29,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 public class PhotoSelector {
 
@@ -83,11 +84,13 @@ public class PhotoSelector {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
                 this.mGalleryUri = null;
-                this.mCameraUri = this.mTools.getCameraUri(getContext(), new File(this.mBuilder.directory, getFileName()));
+                this.mCameraUri = this.mTools.getImageMediaUri(getContext(), new File(this.mBuilder.directory, getFileName()));
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, this.mCameraUri);
             }
             startActivityForResult(intent, this.mBuilder.camera_request_code);
-            logger("-> toCamera");
+            if (BuildConfig.DEBUG) {
+                logger("-> toCamera");
+            }
         }
     }
 
@@ -100,7 +103,9 @@ public class PhotoSelector {
             Intent intent = new Intent(Intent.ACTION_PICK);
             intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
             startActivityForResult(intent, this.mBuilder.gallery_request_code);
-            logger("-> toGallery");
+            if (BuildConfig.DEBUG) {
+                logger("-> toGallery");
+            }
         }
     }
 
@@ -112,7 +117,7 @@ public class PhotoSelector {
         String format = this.mBuilder.fileNameFormat;
         if (format != null && !format.isEmpty()) {
             try {
-                fileName = new SimpleDateFormat(format).format(new Date());
+                fileName = new SimpleDateFormat(format, Locale.getDefault()).format(new Date());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -131,14 +136,18 @@ public class PhotoSelector {
             if (delete) {
                 try {
                     File cropFile = new File(new URI(this.mCropUri.toString()));
-                    logger("-How much CropFile size and path? -Is "
-                            + (cropFile.length() / 1024)
-                            + "KB, and absolute path is "
-                            + cropFile.getAbsolutePath());
+                    if (BuildConfig.DEBUG) {
+                        logger("-How much CropFile size and path? -Is "
+                                + (cropFile.length() / 1024)
+                                + "KB, and absolute path is "
+                                + cropFile.getAbsolutePath());
+                    }
                     boolean isDeleteCropFile = cropFile.delete();
-                    logger("-CropFile is delete? -" + isDeleteCropFile);
+                    if (BuildConfig.DEBUG) {
+                        logger("-CropFile is delete? -" + isDeleteCropFile);
+                    }
                     // 刷新扫描裁剪图片文件
-                    this.mTools.scanFileAsync(getContext(), this.mCropUri);
+                    this.mTools.scanImageMediaAsync(getContext(), this.mCropUri);
                 } catch (URISyntaxException e) {
                     e.printStackTrace();
                 }
@@ -153,15 +162,18 @@ public class PhotoSelector {
     private void recycleCompress(boolean delete) {
         if (delete) {
             if (this.mCompressFile != null && this.mCompressFile.exists()) {
-                logger("-How much CompressFile size and path? -Is "
-                        + (this.mCompressFile.length() / 1024)
-                        + "KB, and absolute path is "
-                        + this.mCompressFile.getAbsolutePath());
-                Uri uri = this.mTools.getImageUriFromFile(getContext(), this.mCompressFile);
+                if (BuildConfig.DEBUG) {
+                    logger("-How much CompressFile size and path? -Is "
+                            + (this.mCompressFile.length() / 1024)
+                            + "KB, and absolute path is "
+                            + this.mCompressFile.getAbsolutePath());
+                }
                 boolean isDeleteCompressFile = this.mCompressFile.delete();
-                logger("-CompressFile is delete? -" + isDeleteCompressFile);
+                if (BuildConfig.DEBUG) {
+                    logger("-CompressFile is delete? -" + isDeleteCompressFile);
+                }
                 // 刷新扫描压缩图片文件
-                this.mTools.scanFileAsync(getContext(), uri);
+                this.mTools.scanImageMediaAsync(getContext(), this.mCompressFile);
             }
         }
         this.mCompressFile = null;
@@ -173,16 +185,20 @@ public class PhotoSelector {
     private void recycleCamera(boolean delete) {
         if (this.mCameraUri != null) {
             if (delete) {
-                File file = this.mTools.uriToFile(getContext(), this.mCameraUri);
+                File file = this.mTools.getImageMediaFile(getContext(), this.mCameraUri);
                 if (file != null && file.exists()) {
-                    logger("-How much CameraFile size and path? -Is "
-                            + (file.length() / 1024)
-                            + "KB, and absolute path is "
-                            + file.getAbsolutePath());
+                    if (BuildConfig.DEBUG) {
+                        logger("-How much CameraFile size and path? -Is "
+                                + (file.length() / 1024)
+                                + "KB, and absolute path is "
+                                + file.getAbsolutePath());
+                    }
                     boolean isDeleteCameraFile = file.delete();
-                    logger("-CameraFile is delete? -" + isDeleteCameraFile);
+                    if (BuildConfig.DEBUG) {
+                        logger("-CameraFile is delete? -" + isDeleteCameraFile);
+                    }
                     // 刷新扫描压缩图片文件
-                    this.mTools.scanFileAsync(getContext(), this.mCameraUri);
+                    this.mTools.scanImageMediaAsync(getContext(), this.mCameraUri);
                 }
             }
             this.mCameraUri = null;
@@ -211,16 +227,15 @@ public class PhotoSelector {
     }
 
     /**
-     * 刷新扫描所用到的媒体文件
+     * 扫描所用到的图片媒体文件并刷新
      */
-    private void scanFileAsync() {
+    private void scanImageMediaAsync() {
         try {
             Context context = getContext();
-            this.mTools.scanFileAsync(context, this.mCropUri);
-            this.mTools.scanFileAsync(context, this.mCameraUri);
-            //this.mTools.scanFileAsync(context, this.mGalleryUri);
-            Uri uri = this.mTools.getImageUriFromFile(getContext(), this.mCompressFile);
-            this.mTools.scanFileAsync(context, uri);
+            this.mTools.scanImageMediaAsync(context, this.mCropUri);
+            this.mTools.scanImageMediaAsync(context, this.mCameraUri);
+            //this.mTools.scanImageMediaAsync(context, this.mGalleryUri);
+            this.mTools.scanImageMediaAsync(context, this.mCompressFile);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -303,8 +318,8 @@ public class PhotoSelector {
                     } else {
                         onActivityResult(this.mBuilder.result_request_code, resultCode, data);
                     }
-                    // 刷新扫描媒体文件
-                    scanFileAsync();
+                    // 扫描图片媒体文件并刷新
+                    scanImageMediaAsync();
                 }
             }
         } else if (this.mBuilder.gallery_request_code == requestCode) {
@@ -320,19 +335,19 @@ public class PhotoSelector {
                 } else {
                     onActivityResult(this.mBuilder.result_request_code, resultCode, data);
                 }
-                // 刷新扫描媒体文件
-                scanFileAsync();
+                // 扫描图片媒体文件并刷新
+                scanImageMediaAsync();
             }
         } else if (this.mBuilder.result_request_code == requestCode) {
             // 最终回调
             File srcFile = null;
             if (isCrop() && this.mCropUri != null) {
-                srcFile = this.mTools.uriToFile(getContext(), this.mCropUri);
+                srcFile = this.mTools.getImageMediaFile(getContext(), this.mCropUri);
             } else if (!isCrop()) {
                 if (this.mCameraUri != null) {
-                    srcFile = this.mTools.uriToFile(getContext(), this.mCameraUri);
+                    srcFile = this.mTools.getImageMediaFile(getContext(), this.mCameraUri);
                 } else if (this.mGalleryUri != null) {
-                    srcFile = this.mTools.uriToFile(getContext(), this.mGalleryUri);
+                    srcFile = this.mTools.getImageMediaFile(getContext(), this.mGalleryUri);
                 }
             }
 
@@ -347,7 +362,7 @@ public class PhotoSelector {
                     long byteSize = isCompressQuality ? this.mBuilder.compressFileSize : 0;
                     Bitmap.CompressFormat format = this.mBuilder.compressFormat;
                     // 执行压缩操作
-                    AsyncCompress.run(this, srcFile, outFile, pxSize, byteSize, format);
+                    CompressAsyncTask.run(this, srcFile, outFile, pxSize, byteSize, format);
                 } else {
                     // 不用压缩，直接返回
                     onImageResult(srcFile);
@@ -356,13 +371,15 @@ public class PhotoSelector {
                 // 异常，回收图片文件
                 recycle(true);
             }
-            // 刷新扫描媒体文件
-            scanFileAsync();
+            // 扫描图片媒体文件并刷新
+            scanImageMediaAsync();
         }
     }
 
     private void onCompressStart(File srcFile) {
-        logger("[Compress Start] SrcFile=" + srcFile);
+        if (BuildConfig.DEBUG) {
+            logger("[Compress Start] SrcFile=" + srcFile);
+        }
         mCompressing = true;
         CompressCallback compressCallback = mBuilder.compressCallback;
         if (compressCallback != null) {
@@ -371,7 +388,9 @@ public class PhotoSelector {
     }
 
     private void onCompressComplete(File srcFile, File outFile) {
-        logger("[Compress Complete] SrcFile=" + srcFile + ", OutFile=" + outFile);
+        if (BuildConfig.DEBUG) {
+            logger("[Compress Complete] SrcFile=" + srcFile + ", OutFile=" + outFile);
+        }
         mCompressing = false;
         CompressCallback compressCallback = mBuilder.compressCallback;
         if (compressCallback != null) {
@@ -386,12 +405,14 @@ public class PhotoSelector {
         }
         // 返回结果
         onImageResult(outFile != null ? outFile : srcFile);
-        // 刷新扫描媒体文件
-        scanFileAsync();
+        // 扫描图片媒体文件并刷新
+        scanImageMediaAsync();
     }
 
     private void onImageResult(File file) {
-        logger("[Result] File=" + file);
+        if (BuildConfig.DEBUG) {
+            logger("[Result] File=" + file);
+        }
         ResultCallback resultCallback = mBuilder.resultCallback;
         if (resultCallback != null) {
             byte[] bytes = this.mTools.readBytesFromFile(file);
@@ -473,7 +494,7 @@ public class PhotoSelector {
          * @param recycleCamera   回收拍照图片文件
          * @param recycleCrop     回收裁剪图片文件
          * @param recycleCompress 回收压缩图片文件
-         * @return
+         * @return this
          */
         public Builder setRecycle(boolean recycleCamera, boolean recycleCrop, boolean recycleCompress) {
             this.recycleCamera = recycleCamera;
@@ -649,7 +670,7 @@ public class PhotoSelector {
         }
     }
 
-    public static class AsyncCompress extends AsyncTask<Object, Void, File> {
+    private static class CompressAsyncTask extends AsyncTask<Object, Void, File> {
         private PhotoSelector callback;
         private File srcFile;
         private File outFile;
@@ -657,10 +678,10 @@ public class PhotoSelector {
         private long byteSize;
         private Bitmap.CompressFormat format;
 
-        private AsyncCompress(PhotoSelector callback,
-                              File srcFile, File outFile,
-                              Integer pxSize, Long byteSize,
-                              Bitmap.CompressFormat format) {
+        private CompressAsyncTask(PhotoSelector callback,
+                                  File srcFile, File outFile,
+                                  Integer pxSize, Long byteSize,
+                                  Bitmap.CompressFormat format) {
             this.callback = callback;
             this.srcFile = srcFile;
             this.outFile = outFile;
@@ -669,11 +690,11 @@ public class PhotoSelector {
             this.format = format;
         }
 
-        public static void run(PhotoSelector callback,
-                               File srcFile, File outFile,
-                               Integer pxSize, Long byteSize,
-                               Bitmap.CompressFormat format) {
-            new AsyncCompress(callback, srcFile, outFile, pxSize, byteSize, format).execute();
+        private static void run(PhotoSelector callback,
+                                File srcFile, File outFile,
+                                Integer pxSize, Long byteSize,
+                                Bitmap.CompressFormat format) {
+            new CompressAsyncTask(callback, srcFile, outFile, pxSize, byteSize, format).execute();
         }
 
         @Override
@@ -733,7 +754,9 @@ public class PhotoSelector {
                         int outHeight = options.outHeight;
                         // 设置缩放比例
                         options.inSampleSize = computeSampleSize(outWidth, outHeight, pxSize);
-                        logger("-How much compress sample size? -" + options.inSampleSize);
+                        if (BuildConfig.DEBUG) {
+                            logger("-How much compress sample size? -" + options.inSampleSize);
+                        }
                         // 缩放比例为1，则无需压缩分辨率
                         if (options.inSampleSize <= 1) {
                             options = null;
@@ -779,12 +802,12 @@ public class PhotoSelector {
                         if (!bitmap.isRecycled()) {
                             bitmap.recycle();
                         }
-                        logger("-How much compress quality? -" + quality);
-                        if (quality >= 0) {
-                            fos = new FileOutputStream(outFile);
-                            fos.write(baos.toByteArray());
-                            fos.flush();
+                        if (BuildConfig.DEBUG) {
+                            logger("-How much compress quality? -" + quality);
                         }
+                        fos = new FileOutputStream(outFile);
+                        fos.write(baos.toByteArray());
+                        fos.flush();
                     }
                     return outFile;
                 } catch (IOException e) {
@@ -874,20 +897,21 @@ public class PhotoSelector {
         }
     }
 
-    public static class Tools {
+    private static class Tools {
 
         /**
-         * Android N 获取拍照Uri
+         * 图片媒体库中，通过File获取Uri
          *
          * @param context context
          * @param file    输出文件
-         * @return 获取拍照Uri
+         * @return 获取图片媒体Uri
          */
-        private Uri getCameraUri(Context context, File file) {
+        private Uri getImageMediaUri(Context context, File file) {
             Uri uri;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 ContentValues contentValues = new ContentValues(1);
                 contentValues.put(MediaStore.Images.Media.DATA, file.getAbsolutePath());
+                contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/*");
                 uri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
             } else {
                 uri = Uri.fromFile(file);
@@ -896,13 +920,13 @@ public class PhotoSelector {
         }
 
         /**
-         * Uri转File
+         * 图片媒体库中，通过Uri获取File
          *
          * @param context context
-         * @param uri     uri
-         * @return Uri转File
+         * @param uri     输出Uri
+         * @return 获取图片媒体File
          */
-        private File uriToFile(Context context, Uri uri) {
+        private File getImageMediaFile(Context context, Uri uri) {
             if (context == null || uri == null) {
                 return null;
             }
@@ -930,10 +954,50 @@ public class PhotoSelector {
         }
 
         /**
+         * 扫描图片媒体文件并刷新
+         *
+         * @param context context
+         * @param uri     文件uri
+         */
+        private void scanImageMediaAsync(Context context, Uri uri) {
+            if (context != null && uri != null) {
+                try {
+                    context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
+                    File file = getImageMediaFile(context, uri);
+                    if (file != null) {
+                        new SingleMediaScanner(context, file);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        /**
+         * 扫描图片媒体文件并刷新
+         *
+         * @param context context
+         * @param file    媒体文件
+         */
+        private void scanImageMediaAsync(Context context, File file) {
+            if (context != null && file != null) {
+                try {
+                    Uri uri = getImageMediaUri(context, file);
+                    if (uri != null) {
+                        context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
+                    }
+                    new SingleMediaScanner(context, file);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        /**
          * 文件转字节数组
          *
-         * @param file 文件
-         * @return 字节数组
+         * @param file File
+         * @return byte[]
          */
         private byte[] readBytesFromFile(File file) {
             byte[] bytes = null;
@@ -960,60 +1024,9 @@ public class PhotoSelector {
         }
 
         /**
-         * 刷新扫描媒体文件
-         *
-         * @param context context
-         * @param uri     文件uri
+         * 媒体库扫描服务
          */
-        private void scanFileAsync(Context context, Uri uri) {
-            if (context != null && uri != null) {
-                try {
-                    context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
-                    File file = uriToFile(context, uri);
-                    if (file != null) {
-                        new SingleMediaScanner(context, file);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        /**
-         * 刷新扫描媒体文件
-         *
-         * @param context context
-         * @param file    媒体文件
-         */
-        private void scanFileAsync(Context context, File file) {
-            if (context != null && file != null) {
-                try {
-                    context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
-                    new SingleMediaScanner(context, file);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        /**
-         * 图片文件转媒体库信息Uri
-         *
-         * @param context context
-         * @param file    媒体文件
-         * @return 媒体库信息Uri
-         */
-        private Uri getImageUriFromFile(Context context, File file) {
-            if (context == null || file == null) {
-                return null;
-            }
-            ContentValues contentValues = new ContentValues(1);
-            contentValues.put(MediaStore.Images.Media.DATA, file.getAbsolutePath());
-            contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/*");
-            return context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
-        }
-
-        private class SingleMediaScanner implements MediaScannerConnection.MediaScannerConnectionClient {
+        private static class SingleMediaScanner implements MediaScannerConnection.MediaScannerConnectionClient {
 
             private MediaScannerConnection connection;
             private File file;
