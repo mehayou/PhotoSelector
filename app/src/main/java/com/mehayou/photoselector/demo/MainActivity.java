@@ -1,11 +1,15 @@
 package com.mehayou.photoselector.demo;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PorterDuff;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.View;
@@ -20,6 +24,9 @@ import android.widget.TextView;
 import com.mehayou.photoselector.PhotoSelector;
 
 import java.util.List;
+
+import static android.content.DialogInterface.BUTTON_NEGATIVE;
+import static android.content.DialogInterface.BUTTON_POSITIVE;
 
 public class MainActivity extends AppCompatActivity implements
         View.OnClickListener, CompoundButton.OnCheckedChangeListener,
@@ -240,6 +247,31 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    public void showDialog() {
+        AlertDialog dialog = new AlertDialog.Builder(this).create();
+        dialog.setTitle("授权失败");
+        dialog.setMessage("相机存储权限无法正常使用，是否前往应用设置开启权限？");
+        dialog.setButton(BUTTON_NEGATIVE, getString(android.R.string.cancel),
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+        dialog.setButton(BUTTON_POSITIVE, getString(android.R.string.ok),
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MainActivity activity = MainActivity.this;
+                        Intent intent = new Intent();
+                        intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        intent.setData(Uri.fromParts("package", activity.getPackageName(), null));
+                        activity.startActivity(intent);
+                    }
+                });
+        dialog.show();
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -253,7 +285,8 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onPermissionDenied(List<String> permissions) {
+    public void onPermissionRationale(List<String> permissions) {
+        showDialog();
         show("[Permission] request denied - " + permissions.toString()
                 .replace("[", "")
                 .replace("]", "")

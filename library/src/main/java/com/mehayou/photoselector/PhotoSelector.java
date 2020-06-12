@@ -392,11 +392,7 @@ public class PhotoSelector {
         Context context = this.mBuilder.context;
         if (context != null) {
             String[] permissions;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
-                permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-            } else {
-                permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-            }
+            permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
             for (String permission : permissions) {
                 int check = PermissionChecker.checkSelfPermission(context, permission);
                 if (check != PackageManager.PERMISSION_GRANTED) {
@@ -432,33 +428,40 @@ public class PhotoSelector {
         }
         if (this.mBuilder.camera_request_code == requestCode
                 || this.mBuilder.gallery_request_code == requestCode) {
-            List<String> deniedPermissionList = null;
+            boolean isGranted = true;
+            List<String> rationale = null;
             for (int i = 0; i < Math.min(permissions.length, grantResults.length); i++) {
                 int result = grantResults[i];
                 String permission = permissions[i];
                 if (PackageManager.PERMISSION_GRANTED != result) {
-                    if (deniedPermissionList == null) {
-                        deniedPermissionList = new ArrayList<>();
+                    isGranted = false;
+                    if (!ActivityCompat.shouldShowRequestPermissionRationale(this.mBuilder.activity, permission)) {
+                        // 被拒且不再询问
+                        if (rationale == null) {
+                            rationale = new ArrayList<>();
+                        }
+                        rationale.add(permission);
                     }
-                    deniedPermissionList.add(permission);
                 }
             }
-            if (deniedPermissionList != null && !deniedPermissionList.isEmpty()) {
+            if (isGranted) {
+                if (this.mBuilder.camera_request_code == requestCode) {
+                    // 去相机
+                    toCamera();
+                } else {
+                    // 去相册
+                    toGallery();
+                }
+            } else if (rationale != null && !rationale.isEmpty()) {
                 if (BuildConfig.DEBUG) {
-                    logger("[Permission] request denied - " + deniedPermissionList.toString()
+                    logger("[Permission] request denied - " + rationale.toString()
                             .replace("[", "")
                             .replace("]", "")
                             .replace(" ", ""));
                 }
                 if (this.mBuilder.permissionCallback != null) {
-                    this.mBuilder.permissionCallback.onPermissionDenied(deniedPermissionList);
+                    this.mBuilder.permissionCallback.onPermissionRationale(rationale);
                 }
-            } else if (this.mBuilder.camera_request_code == requestCode) {
-                // 去相机
-                toCamera();
-            } else if (this.mBuilder.gallery_request_code == requestCode) {
-                // 去相册
-                toGallery();
             }
         }
     }
@@ -1193,8 +1196,10 @@ public class PhotoSelector {
     public interface PermissionCallback {
 
         /**
-         * 申请被拒的权限
+         * 授权失败
+         *
+         * @param permissions 授权被拒且不再询问的权限
          */
-        void onPermissionDenied(List<String> permissions);
+        void onPermissionRationale(List<String> permissions);
     }
 }
