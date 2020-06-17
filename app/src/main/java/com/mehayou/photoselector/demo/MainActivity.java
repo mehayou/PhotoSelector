@@ -1,15 +1,14 @@
 package com.mehayou.photoselector.demo;
 
+import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.View;
@@ -23,16 +22,14 @@ import android.widget.TextView;
 
 import com.mehayou.photoselector.PhotoSelector;
 
+import java.io.File;
 import java.util.List;
-
-import static android.content.DialogInterface.BUTTON_NEGATIVE;
-import static android.content.DialogInterface.BUTTON_POSITIVE;
 
 public class MainActivity extends AppCompatActivity implements
         View.OnClickListener, CompoundButton.OnCheckedChangeListener,
-        PhotoSelector.ResultCallback,
         PhotoSelector.CompressCallback,
-        PhotoSelector.PermissionCallback {
+        PhotoSelector.PermissionCallback,
+        PhotoSelector.ResultCallback<File> {
 
     private ImageView mImageView;
     private ProgressBar mProgressBar;
@@ -113,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements
         cbRecycleCrop.setChecked(true);
         cbRecycleCompress.setChecked(true);
         cbFormat.setChecked(true);
-        cbCompress.setChecked(true);
+        cbCompress.setChecked(false);
         onCheckedChanged(cbCrop, false);
     }
 
@@ -251,14 +248,14 @@ public class MainActivity extends AppCompatActivity implements
         AlertDialog dialog = new AlertDialog.Builder(this).create();
         dialog.setTitle("授权失败");
         dialog.setMessage("相机存储权限无法正常使用，是否前往应用设置开启权限？");
-        dialog.setButton(BUTTON_NEGATIVE, getString(android.R.string.cancel),
+        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel),
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.cancel();
                     }
                 });
-        dialog.setButton(BUTTON_POSITIVE, getString(android.R.string.ok),
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(android.R.string.ok),
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -306,12 +303,13 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onImageResult(byte[] bytes) {
-        if (bytes != null) {
+    public void onImageResult(File file) {
+        if (file != null) {
             show("[result]");
-            show("bytes=" + bytes.length);
-            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            mImageView.setImageBitmap(bitmap);
+            show("file=" + file.getAbsolutePath());
+//            show("bytes=" + bytes.length);
+//            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+//            mImageView.setImageBitmap(bitmap);
         }
     }
 }

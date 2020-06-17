@@ -2,19 +2,13 @@ package com.mehayou.photoselector;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
-import android.media.ExifInterface;
-import android.media.MediaScannerConnection;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -22,13 +16,9 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.PermissionChecker;
-import android.util.Log;
+import android.support.v7.graphics.drawable.DrawableWrapper;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
@@ -38,14 +28,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class PhotoSelector {
-
-    private static final String TAG = PhotoSelector.class.getSimpleName();
-
-    private static void logger(String message) {
-        if (BuildConfig.DEBUG) {
-            Log.i(TAG, message);
-        }
-    }
 
     private Tools mTools;
     // 拍照的Uri
@@ -95,7 +77,7 @@ public class PhotoSelector {
             }
             startActivityForResult(intent, this.mBuilder.camera_request_code);
             if (BuildConfig.DEBUG) {
-                logger("-> toCamera");
+                Logger.i("-> toCamera");
             }
         }
     }
@@ -110,7 +92,7 @@ public class PhotoSelector {
             intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
             startActivityForResult(intent, this.mBuilder.gallery_request_code);
             if (BuildConfig.DEBUG) {
-                logger("-> toGallery");
+                Logger.i("-> toGallery");
             }
         }
     }
@@ -143,14 +125,14 @@ public class PhotoSelector {
                 try {
                     File cropFile = new File(new URI(this.mCropUri.toString()));
                     if (BuildConfig.DEBUG) {
-                        logger("-How much CropFile size and path? -Is "
+                        Logger.i("-How much CropFile size and path? -Is "
                                 + (cropFile.length() / 1024)
                                 + "KB, and absolute path is "
                                 + cropFile.getAbsolutePath());
                     }
                     boolean isDeleteCropFile = cropFile.delete();
                     if (BuildConfig.DEBUG) {
-                        logger("-CropFile is delete? -" + isDeleteCropFile);
+                        Logger.i("-CropFile is delete? -" + isDeleteCropFile);
                     }
                     // 刷新扫描裁剪图片文件
                     this.mTools.scanImageMediaAsync(getContext(), this.mCropUri);
@@ -169,14 +151,14 @@ public class PhotoSelector {
         if (delete) {
             if (this.mCompressFile != null && this.mCompressFile.exists()) {
                 if (BuildConfig.DEBUG) {
-                    logger("-How much CompressFile size and path? -Is "
+                    Logger.i("-How much CompressFile size and path? -Is "
                             + (this.mCompressFile.length() / 1024)
                             + "KB, and absolute path is "
                             + this.mCompressFile.getAbsolutePath());
                 }
                 boolean isDeleteCompressFile = this.mCompressFile.delete();
                 if (BuildConfig.DEBUG) {
-                    logger("-CompressFile is delete? -" + isDeleteCompressFile);
+                    Logger.i("-CompressFile is delete? -" + isDeleteCompressFile);
                 }
                 // 刷新扫描压缩图片文件
                 this.mTools.scanImageMediaAsync(getContext(), this.mCompressFile);
@@ -194,14 +176,14 @@ public class PhotoSelector {
                 File file = this.mTools.getImageMediaFile(getContext(), this.mCameraUri);
                 if (file != null && file.exists()) {
                     if (BuildConfig.DEBUG) {
-                        logger("-How much CameraFile size and path? -Is "
+                        Logger.i("-How much CameraFile size and path? -Is "
                                 + (file.length() / 1024)
                                 + "KB, and absolute path is "
                                 + file.getAbsolutePath());
                     }
                     boolean isDeleteCameraFile = file.delete();
                     if (BuildConfig.DEBUG) {
-                        logger("-CameraFile is delete? -" + isDeleteCameraFile);
+                        Logger.i("-CameraFile is delete? -" + isDeleteCameraFile);
                     }
                     // 刷新扫描压缩图片文件
                     this.mTools.scanImageMediaAsync(getContext(), this.mCameraUri);
@@ -454,7 +436,7 @@ public class PhotoSelector {
                 }
             } else if (rationale != null && !rationale.isEmpty()) {
                 if (BuildConfig.DEBUG) {
-                    logger("[Permission] request denied - " + rationale.toString()
+                    Logger.i("[Permission] request denied - " + rationale.toString()
                             .replace("[", "")
                             .replace("]", "")
                             .replace(" ", ""));
@@ -466,9 +448,9 @@ public class PhotoSelector {
         }
     }
 
-    private void onCompressStart(File srcFile) {
+    void onCompressStart(File srcFile) {
         if (BuildConfig.DEBUG) {
-            logger("[Compress Start] SrcFile=" + srcFile);
+            Logger.i("[Compress Start] SrcFile=" + srcFile);
         }
         mCompressing = true;
         CompressCallback compressCallback = mBuilder.compressCallback;
@@ -477,22 +459,28 @@ public class PhotoSelector {
         }
     }
 
-    private void onCompressComplete(File srcFile, File outFile) {
+    void onCompressComplete(File srcFile, File outFile) {
         if (BuildConfig.DEBUG) {
-            logger("[Compress Complete] SrcFile=" + srcFile + ", OutFile=" + outFile);
+            Logger.i("[Compress Complete] SrcFile=" + srcFile + ", OutFile=" + outFile);
         }
         mCompressing = false;
+        mCompressFile = outFile;
         CompressCallback compressCallback = mBuilder.compressCallback;
         if (compressCallback != null) {
             compressCallback.onCompressComplete(outFile != null);
         }
-        mCompressFile = outFile;
+
         if (isCrop()
-                && mCompressFile != null && mCompressFile.exists()
-                && mCompressFile == outFile) {
-            // 有压缩图片文件，且有裁剪图片文件，则回收裁剪图片文件
+                && outFile != null && outFile.exists()) {
+            // 有进行裁剪，且有进行压缩，则回收裁剪图片文件
             recycleCrop(this.mBuilder.recycleCrop);
         }
+        if (isCrop()
+                || (outFile != null && outFile.exists())) {
+            // 有进行裁剪，或有进行压缩，则回收拍照图片文件
+            recycleCamera(this.mBuilder.recycleCamera);
+        }
+
         // 返回结果
         onImageResult(outFile != null ? outFile : srcFile);
         // 扫描图片媒体文件并刷新
@@ -501,14 +489,35 @@ public class PhotoSelector {
 
     private void onImageResult(File file) {
         if (BuildConfig.DEBUG) {
-            logger("[Result] File=" + file);
+            Logger.i("[Result] File=" + file);
         }
         ResultCallback resultCallback = mBuilder.resultCallback;
         if (resultCallback != null) {
-            byte[] bytes = this.mTools.readBytesFromFile(file);
-            resultCallback.onImageResult(bytes);
-            // 回收图片文件
-            recycle(false);
+            Class<?> aClass = GenericType.findGenericInterfaces(resultCallback, ResultCallback.class);
+            if (BuildConfig.DEBUG) {
+                Logger.i("[Result] Class=" + aClass);
+            }
+            if (aClass != null) {
+                if (aClass.equals(File.class)) {
+                    resultCallback.onImageResult(file);
+                } else {
+                    if (aClass.equals(byte[].class)) {
+                        byte[] bytes = this.mTools.readBytesFromFile(file);
+                        resultCallback.onImageResult(bytes);
+                    } else if (aClass.equals(Bitmap.class)) {
+                        Bitmap bitmap = BitmapFactory.decodeFile(file.getPath());
+                        resultCallback.onImageResult(bitmap);
+                    } else if (aClass.equals(Drawable.class)) {
+                        Drawable drawable = DrawableWrapper.createFromPath(file.getPath());
+                        resultCallback.onImageResult(drawable);
+                    } else if (aClass.equals(String.class)) {
+                        String base64 = this.mTools.readBase64FromFile(file);
+                        resultCallback.onImageResult(base64);
+                    }
+                    // 回收图片文件
+                    recycle(false);
+                }
+            }
         }
     }
 
@@ -551,7 +560,7 @@ public class PhotoSelector {
          * @param activity activity
          * @param callback 结果回调
          */
-        public Builder(Activity activity, ResultCallback callback) {
+        public <T> Builder(Activity activity, ResultCallback<T> callback) {
             this.activity = activity;
             this.context = activity;
             this.resultCallback = callback;
@@ -563,7 +572,7 @@ public class PhotoSelector {
          * @param fragment fragment
          * @param callback 结果回调
          */
-        public Builder(Fragment fragment, ResultCallback callback) {
+        public <T> Builder(Fragment fragment, ResultCallback<T> callback) {
             this.fragment = fragment;
             this.activity = fragment.getActivity();
             this.context = fragment.getContext();
@@ -789,393 +798,14 @@ public class PhotoSelector {
         }
     }
 
-    private static class CompressAsyncTask extends AsyncTask<Object, Void, File> {
-        private PhotoSelector callback;
-        private File srcFile;
-        private File outFile;
-        private int pxSize;
-        private long byteSize;
-        private Bitmap.CompressFormat format;
-
-        private CompressAsyncTask(PhotoSelector callback,
-                                  File srcFile, File outFile,
-                                  Integer pxSize, Long byteSize,
-                                  Bitmap.CompressFormat format) {
-            this.callback = callback;
-            this.srcFile = srcFile;
-            this.outFile = outFile;
-            this.pxSize = pxSize;
-            this.byteSize = byteSize;
-            this.format = format;
-        }
-
-        private static void run(PhotoSelector callback,
-                                File srcFile, File outFile,
-                                Integer pxSize, Long byteSize,
-                                Bitmap.CompressFormat format) {
-            new CompressAsyncTask(callback, srcFile, outFile, pxSize, byteSize, format).execute();
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            if (callback != null) {
-                callback.onCompressStart(this.srcFile);
-            }
-        }
-
-        @Override
-        protected File doInBackground(Object... objects) {
-            return compressBitmapFile(this.srcFile, this.outFile, this.pxSize, this.byteSize, this.format);
-        }
-
-        @Override
-        protected void onPostExecute(File file) {
-            super.onPostExecute(file);
-            if (callback != null) {
-                callback.onCompressComplete(this.srcFile, file);
-            }
-        }
-
-        /**
-         * 压缩图片文件
-         *
-         * @param srcFile  源文件
-         * @param outFile  输出文件
-         * @param pxSize   压缩分辨率大小，小于等于0不压缩，单位px
-         * @param byteSize 压缩文件大小，小于等于0不压缩（受分辨率大小压缩影响），单位byte
-         * @param format   压缩格式
-         * @return 返回null，则表示压缩失败，或无需进行压缩
-         */
-        private File compressBitmapFile(File srcFile, File outFile, Integer pxSize, Long byteSize,
-                                        Bitmap.CompressFormat format) {
-            if (pxSize <= 0 && byteSize <= 0) {
-                // 分辨率大小 与 文件大小 需压缩一项
-                return null;
-            }
-            if (outFile != null && srcFile != null && srcFile.exists() && srcFile.length() > 0) {
-                ByteArrayOutputStream baos = null;
-                FileOutputStream fos = null;
-                try {
-                    // 获取图片旋转角度
-                    int degree = getBitmapDegree(srcFile.getAbsolutePath());
-
-                    /* 图片分辨率压缩 */
-                    // 获取原图片分辨率大小
-                    BitmapFactory.Options options = null;
-                    if (pxSize > 0) {
-                        options = new BitmapFactory.Options();
-                        options.inJustDecodeBounds = true;
-                        options.inSampleSize = 1;
-                        BitmapFactory.decodeFile(srcFile.getAbsolutePath(), options);
-                        options.inJustDecodeBounds = false;
-                        int outWidth = options.outWidth;
-                        int outHeight = options.outHeight;
-                        // 设置缩放比例
-                        options.inSampleSize = computeSampleSize(outWidth, outHeight, pxSize);
-                        if (BuildConfig.DEBUG) {
-                            logger("-How much compress sample size? -" + options.inSampleSize);
-                        }
-                        // 缩放比例为1，则无需压缩分辨率
-                        if (options.inSampleSize <= 1) {
-                            options = null;
-                        }
-
-                        // 判断是否是以Bitmap进行压缩大小输出新文件
-                        if (options != null || degree != 0) {
-                            // 分辨率需要压缩 || 图片被旋转 = 需要进行输出新文件
-                            if (byteSize <= 0) {
-                                // 原不要求压缩文件大小，则取原文件大小为最大限制
-                                byteSize = srcFile.length();
-                            }
-                        } else {
-                            // 分辨率满足要求
-                            if (byteSize <= 0 || srcFile.length() <= byteSize) {
-                                // 文件大小不压缩 || 文件大小符合要求 = 不需要进行输出
-                                return null;
-                            }
-                        }
-                    }
-
-                    // 将options适配完成，重新载入图片。
-                    Bitmap bitmap = BitmapFactory.decodeFile(srcFile.getAbsolutePath(), options);
-
-                    /* 旋转图片，先旋转后压缩 */
-                    if (degree != 0) {
-                        bitmap = rotateBitmap(bitmap, degree);
-                    }
-
-                    /* 图片质量压缩 */
-                    if (!(bitmap == null || bitmap.getWidth() == 0 || bitmap.getHeight() == 0)) {
-                        int quality = 100;
-                        baos = new ByteArrayOutputStream();
-                        // 质量100存在输出比原图大
-                        bitmap.compress(format, quality, baos);
-                        // PNG不支持质量压缩
-                        if (byteSize > 0 && Bitmap.CompressFormat.PNG != format) {
-                            while (baos.toByteArray().length > byteSize && quality > 0) {
-                                baos.reset();
-                                bitmap.compress(format, quality -= 5, baos);
-                            }
-                        }
-                        if (!bitmap.isRecycled()) {
-                            bitmap.recycle();
-                        }
-                        if (BuildConfig.DEBUG) {
-                            logger("-How much compress quality? -" + quality);
-                        }
-                        fos = new FileOutputStream(outFile);
-                        fos.write(baos.toByteArray());
-                        fos.flush();
-                    }
-                    return outFile;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    try {
-                        if (baos != null) {
-                            baos.close();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    try {
-                        if (fos != null) {
-                            fos.close();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            return null;
-        }
-
-        /**
-         * 计算图片缩放比例
-         *
-         * @param width      原宽度
-         * @param height     原高度
-         * @param targetSize 目标尺寸
-         * @return 缩放比例
-         */
-        private int computeSampleSize(int width, int height, int targetSize) {
-            int maxSize = Math.max(width, height);
-            if (targetSize > 0 && maxSize > targetSize) {
-                return (int) Math.ceil((double) maxSize / (double) targetSize);
-            } else {
-                return 1;
-            }
-        }
-
-        /**
-         * 获取图片旋转角度
-         *
-         * @param path 图片文件路径
-         * @return 角度
-         */
-        private int getBitmapDegree(String path) {
-            int degree = 0;
-            try {
-                ExifInterface exifInterface = new ExifInterface(path);
-                int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION,
-                        ExifInterface.ORIENTATION_NORMAL);
-                switch (orientation) {
-                    case ExifInterface.ORIENTATION_ROTATE_90:
-                        degree = 90;
-                        break;
-                    case ExifInterface.ORIENTATION_ROTATE_180:
-                        degree = 180;
-                        break;
-                    case ExifInterface.ORIENTATION_ROTATE_270:
-                        degree = 270;
-                        break;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return degree;
-        }
-
-        /**
-         * 旋转图片
-         *
-         * @param bitmap  图片
-         * @param degrees 旋转角度
-         * @return 旋转图片
-         */
-        private Bitmap rotateBitmap(Bitmap bitmap, int degrees) {
-            if (degrees != 0) {
-                Matrix matrix = new Matrix();
-                matrix.postRotate(degrees);
-                int width = bitmap.getWidth();
-                int height = bitmap.getHeight();
-                return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
-            }
-            return bitmap;
-        }
-    }
-
-    private static class Tools {
-
-        /**
-         * 图片媒体库中，通过File获取Uri
-         *
-         * @param context context
-         * @param file    输出文件
-         * @return 获取图片媒体Uri
-         */
-        private Uri getImageMediaUri(Context context, File file) {
-            Uri uri;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                ContentValues contentValues = new ContentValues(1);
-                contentValues.put(MediaStore.Images.Media.DATA, file.getAbsolutePath());
-                contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/*");
-                uri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
-            } else {
-                uri = Uri.fromFile(file);
-            }
-            return uri;
-        }
-
-        /**
-         * 图片媒体库中，通过Uri获取File
-         *
-         * @param context context
-         * @param uri     输出Uri
-         * @return 获取图片媒体File
-         */
-        private File getImageMediaFile(Context context, Uri uri) {
-            if (context == null || uri == null) {
-                return null;
-            }
-            final String scheme = uri.getScheme();
-            String path = null;
-            if (scheme == null) {
-                path = uri.getPath();
-            } else if (ContentResolver.SCHEME_FILE.equals(scheme)) {
-                path = uri.getPath();
-            } else if (ContentResolver.SCHEME_CONTENT.equals(scheme)) {
-                Cursor cursor = context.getContentResolver().query(uri,
-                        new String[]{MediaStore.Images.ImageColumns.DATA},
-                        null, null, null);
-                if (cursor != null) {
-                    if (cursor.moveToFirst()) {
-                        int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
-                        if (index > -1) {
-                            path = cursor.getString(index);
-                        }
-                    }
-                    cursor.close();
-                }
-            }
-            return path != null ? new File(path) : null;
-        }
-
-        /**
-         * 扫描图片媒体文件并刷新
-         *
-         * @param context context
-         * @param uri     文件uri
-         */
-        private void scanImageMediaAsync(Context context, Uri uri) {
-            if (context != null && uri != null) {
-                try {
-                    context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
-                    File file = getImageMediaFile(context, uri);
-                    if (file != null) {
-                        new SingleMediaScanner(context, file);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        /**
-         * 扫描图片媒体文件并刷新
-         *
-         * @param context context
-         * @param file    媒体文件
-         */
-        private void scanImageMediaAsync(Context context, File file) {
-            if (context != null && file != null) {
-                try {
-                    Uri uri = getImageMediaUri(context, file);
-                    if (uri != null) {
-                        context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
-                    }
-                    new SingleMediaScanner(context, file);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        /**
-         * 文件转字节数组
-         *
-         * @param file File
-         * @return byte[]
-         */
-        private byte[] readBytesFromFile(File file) {
-            byte[] bytes = null;
-            if (file != null && file.exists()) {
-                FileInputStream fis = null;
-                try {
-                    bytes = new byte[(int) file.length()];
-                    //read file into bytes[]
-                    fis = new FileInputStream(file);
-                    fis.read(bytes);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    if (fis != null) {
-                        try {
-                            fis.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
-            return bytes;
-        }
-
-        /**
-         * 媒体库扫描服务
-         */
-        private static class SingleMediaScanner implements MediaScannerConnection.MediaScannerConnectionClient {
-
-            private MediaScannerConnection connection;
-            private File file;
-
-            private SingleMediaScanner(Context context, File file) {
-                this.file = file;
-                this.connection = new MediaScannerConnection(context, this);
-                this.connection.connect();
-            }
-
-            @Override
-            public void onMediaScannerConnected() {
-                this.connection.scanFile(this.file.getAbsolutePath(), null);
-            }
-
-            @Override
-            public void onScanCompleted(String path, Uri uri) {
-                this.connection.disconnect();
-            }
-        }
-    }
-
-    public interface ResultCallback {
+    public interface ResultCallback<T> {
 
         /**
          * 图片回调
          *
-         * @param bytes 图片文件字节
+         * @param t T
          */
-        void onImageResult(byte[] bytes);
+        void onImageResult(T t);
     }
 
     public interface CompressCallback {
