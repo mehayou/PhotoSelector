@@ -85,20 +85,20 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 ```
 
 #### 调用相机相册
-调用前，需获取相机以及读写权限
+调用时，方法会申请相机和读写权限
 ```java
-// 去拍照，会自行执行权限申请
+// 去拍照
 selector.toCamera();
-// 去相册，会自行执行权限申请
+// 去相册
 selector.toGallery();
 ```
 
 ## 方法以及回调
 #### 方法
 ```java
-// 去拍照，会自行执行权限申请
+// 去拍照
 selector.toCamera();
-// 去相册，会自行执行权限申请
+// 去相册
 selector.toGallery();
 // 回收拍照、裁剪、压缩后的图片文件（不涉及相册原文件）
 selector.recycle();
