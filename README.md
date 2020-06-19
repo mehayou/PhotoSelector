@@ -62,7 +62,7 @@ PhotoSelector selector = new PhotoSelector.Builder(this)
         .setCropOutput(0, 0) // 强制裁剪图片分辨率大小，为0则不裁剪，注：使用后setCropAspect、setCompressImageSize方法失效
         .setFileNameFormat("yyyymmddhhmmssSSS") // 输出文件名称格式，若格式不正确或为空，则默认取时间戳
         .setDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)) // 输出目录
-        .create(this); // 结果回调，默认回调结果类型为File，可用ResultFactory选择其他类型
+        .create(this); // 创建选择器，并回调结果。默认回调结果类型为File，可用ResultFactory选择其他类型
 ```
 注：建议分辨率大一些，文件小一些，图片更清晰
 
