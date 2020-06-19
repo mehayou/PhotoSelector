@@ -1,4 +1,4 @@
-package com.mehayou.photoselector;
+package com.mehayou.photoselector.tools;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -17,7 +17,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-class Tools {
+public class Tools {
 
     /**
      * 图片媒体库中，通过File获取Uri
@@ -26,7 +26,7 @@ class Tools {
      * @param file    输出文件
      * @return 获取图片媒体Uri
      */
-    Uri getImageMediaUri(Context context, File file) {
+    public static Uri getImageMediaUri(Context context, File file) {
         Uri uri;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             ContentValues contentValues = new ContentValues(1);
@@ -46,7 +46,7 @@ class Tools {
      * @param uri     输出Uri
      * @return 获取图片媒体File
      */
-    File getImageMediaFile(Context context, Uri uri) {
+    public static File getImageMediaFile(Context context, Uri uri) {
         if (context == null || uri == null) {
             return null;
         }
@@ -79,7 +79,7 @@ class Tools {
      * @param context context
      * @param uri     文件uri
      */
-    void scanImageMediaAsync(Context context, Uri uri) {
+    public static void scanImageMediaAsync(Context context, Uri uri) {
         if (context != null && uri != null) {
             try {
                 context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
@@ -99,7 +99,7 @@ class Tools {
      * @param context context
      * @param file    媒体文件
      */
-    void scanImageMediaAsync(Context context, File file) {
+    public static void scanImageMediaAsync(Context context, File file) {
         if (context != null && file != null) {
             try {
                 Uri uri = getImageMediaUri(context, file);
@@ -119,7 +119,7 @@ class Tools {
      * @param file File
      * @return byte[]
      */
-    byte[] readBytesFromFile(File file) {
+    public static byte[] readBytesFromFile(File file) {
         byte[] bytes = null;
         if (file != null && file.exists()) {
             FileInputStream fis = null;
@@ -149,7 +149,7 @@ class Tools {
      * @param file File
      * @return Base4
      */
-    String readBase64FromFile(File file) {
+    public static String readBase64FromFile(File file) {
         String base64 = null;
         InputStream in = null;
         try {

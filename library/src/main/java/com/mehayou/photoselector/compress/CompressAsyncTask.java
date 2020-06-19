@@ -1,10 +1,14 @@
-package com.mehayou.photoselector;
+package com.mehayou.photoselector.compress;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.os.AsyncTask;
+import android.util.Log;
+
+import com.mehayou.photoselector.BuildConfig;
+import com.mehayou.photoselector.PhotoSelector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -13,30 +17,29 @@ import java.io.IOException;
 
 class CompressAsyncTask extends AsyncTask<Object, Void, File> {
 
-    private PhotoSelector callback;
+    private void logger(String message) {
+        if (BuildConfig.DEBUG) {
+            Log.i(PhotoSelector.class.getSimpleName(), message);
+        }
+    }
+
+    private Compress.Callback callback;
     private File srcFile;
     private File outFile;
     private int pxSize;
     private long byteSize;
     private Bitmap.CompressFormat format;
 
-    private CompressAsyncTask(PhotoSelector callback,
-                              File srcFile, File outFile,
-                              Integer pxSize, Long byteSize,
-                              Bitmap.CompressFormat format) {
+    CompressAsyncTask(File srcFile, File outFile,
+                      Integer pxSize, Long byteSize,
+                      Bitmap.CompressFormat format,
+                      Compress.Callback callback) {
         this.callback = callback;
         this.srcFile = srcFile;
         this.outFile = outFile;
         this.pxSize = pxSize;
         this.byteSize = byteSize;
         this.format = format;
-    }
-
-    static void run(PhotoSelector callback,
-                            File srcFile, File outFile,
-                            Integer pxSize, Long byteSize,
-                            Bitmap.CompressFormat format) {
-        new CompressAsyncTask(callback, srcFile, outFile, pxSize, byteSize, format).execute();
     }
 
     @Override
@@ -97,7 +100,7 @@ class CompressAsyncTask extends AsyncTask<Object, Void, File> {
                     // 设置缩放比例
                     options.inSampleSize = computeSampleSize(outWidth, outHeight, pxSize);
                     if (BuildConfig.DEBUG) {
-                        Logger.i("-How much compress sample size? -" + options.inSampleSize);
+                        logger("-How much compress sample size? -" + options.inSampleSize);
                     }
                     // 缩放比例为1，则无需压缩分辨率
                     if (options.inSampleSize <= 1) {
@@ -145,7 +148,7 @@ class CompressAsyncTask extends AsyncTask<Object, Void, File> {
                         bitmap.recycle();
                     }
                     if (BuildConfig.DEBUG) {
-                        Logger.i("-How much compress quality? -" + quality);
+                        logger("-How much compress quality? -" + quality);
                     }
                     fos = new FileOutputStream(outFile);
                     fos.write(baos.toByteArray());

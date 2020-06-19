@@ -96,9 +96,9 @@ public class MainActivity extends AppCompatActivity implements
         etAspectX = findViewById(R.id.et_crop_aspect_x);
         etAspectY = findViewById(R.id.et_crop_aspect_y);
 
-        mBuilder = new PhotoSelector.Builder(this, this);
+        mBuilder = new PhotoSelector.Builder(this);
         mBuilder.setPermissionCallback(this);
-        mPhotoSelector = mBuilder.build();
+        mPhotoSelector = mBuilder.create(this);
 
         cbRecycleCamera.setOnCheckedChangeListener(this);
         cbRecycleCrop.setOnCheckedChangeListener(this);
@@ -307,6 +307,7 @@ public class MainActivity extends AppCompatActivity implements
         if (file != null) {
             show("[result]");
             show("file=" + file.getAbsolutePath());
+            mImageView.setImageURI(Uri.fromFile(file));
 //            show("bytes=" + bytes.length);
 //            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
 //            mImageView.setImageBitmap(bitmap);
