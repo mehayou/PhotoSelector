@@ -40,7 +40,7 @@ publish {
     userOrg = 'mehayou'
     groupId = 'com.mehayou'
     artifactId = 'photoselector'
-    publishVersion = '1.0.2'
+    publishVersion = '1.0.3'
     desc = ''
     website = 'https://github.com/mehayou/PhotoSelector'
 }
