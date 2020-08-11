@@ -35,10 +35,6 @@ implementation 'com.mehayou:photoselector:releases'
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 ```
-* Android6.0（即API23）及以上时，需要手动申请读写权限，从1.0.2版本开始无需申请，以下版本请自行完善，示例如下：
-```java
-ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
-```
 * Android10（即API29）及以上时，需要申明访问公共外部存储权限，在AndroidManifest.xml中，application节点下添加：
 ```xml
 android:requestLegacyExternalStorage="true"
