@@ -79,7 +79,8 @@ public class PhotoSelector {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
                 this.mGalleryUri = null;
-                this.mCameraUri = Tools.getImageMediaUri(getContext(), new File(this.mBuilder.directory, getFileName()));
+                File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), getFileName());
+                this.mCameraUri = Tools.getImageMediaUri(getContext(), file);
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, this.mCameraUri);
             }
             startActivityForResult(intent, this.mBuilder.camera_request_code);
@@ -380,8 +381,7 @@ public class PhotoSelector {
         boolean hasSelfPermissions = true;
         Context context = this.mBuilder.context;
         if (context != null) {
-            String[] permissions;
-            permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+            String[] permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
             for (String permission : permissions) {
                 int check = PermissionChecker.checkSelfPermission(context, permission);
                 if (check != PackageManager.PERMISSION_GRANTED) {
