@@ -30,15 +30,14 @@ implementation 'com.mehayou:photoselector:releases'
 ```
 
 ## 权限申请
-* 在AndroidManifest.xml中添加申明相机、读写权限，如下：
+* 在AndroidManifest.xml中添加申明读写权限，如下：
 ```xml
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.CAMERA" />
 ```
-* Android6.0（即API23）及以上时，需要手动申请相机、读写权限，从1.0.2版本开始无需申请，以下版本请自行完善，示例如下：
+* Android6.0（即API23）及以上时，需要手动申请读写权限，从1.0.2版本开始无需申请，以下版本请自行完善，示例如下：
 ```java
-ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
 ```
 * Android10（即API29）及以上时，需要申明访问公共外部存储权限，在AndroidManifest.xml中，application节点下添加：
 ```xml
@@ -85,7 +84,7 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 ```
 
 #### 调用相机相册
-调用时，方法会申请相机和读写权限
+调用时，方法会自动申请读写权限
 ```java
 // 去拍照
 selector.toCamera();
@@ -100,10 +99,12 @@ selector.toGallery();
 selector.toCamera();
 // 去相册
 selector.toGallery();
+
 // 回收拍照、裁剪、压缩后的图片文件（不涉及相册原文件）
 selector.recycle();
 // 是否正在压缩图片
 selector.isCompressing();
+
 // 处理结果回调
 selector.onActivityResult(requestCode, resultCode, data);
 // 处理权限回调
@@ -111,6 +112,7 @@ selector.onRequestPermissionsResult(requestCode, permissions, grantResults);
 ```
 
 #### 结果回调
+结果回调支持 Flie、byte[]、Bitmap、Drawable、String
 ```java
 new PhotoSelector.ResultCallback<File>() {
     /**
@@ -122,19 +124,6 @@ new PhotoSelector.ResultCallback<File>() {
         imageView.setImageURI(Uri.fromFile(file));
     }
 };
-```
-结果回调可选类型
-```java
-// 返回文件
-ResultFactory.callbackFile(this);
-// 返回字节数组
-ResultFactory.callbackBytes(this);
-// 返回Base64
-ResultFactory.callbackBase64(this);
-// 返回Bitmap
-ResultFactory.callbackBitmap(this);
-// 返回Drawable
-ResultFactory.callbackDrawable(this);
 ```
 
 #### 压缩回调
@@ -173,14 +162,10 @@ new PhotoSelector.PermissionCallback() {
 };
 ```
 ## 版本说明
-#### v1.0.2
-无需手动申请权限，多种类型随意选择。
-* 提升最小API至16
-* 新增申请权限，无需手动申请
-* 新增回调结果多种类型可选（Flie、byte[]、Bitmap、Drawable、String）
-#### v1.0.1
-防止拍照、裁剪、压缩图片生成占用存储空间，新增回收机制，“无感”获取图片。
-* 新增配置是否回收拍照、裁剪、压缩图片
-* 修改默认不开启压缩
-* 修改压缩回调单独配置
-* 修改结果回调返回byte字节数组
+#### v1.0.3
+小修复，小调整。
+* 修复路径更改后时，去相机拍照报错；修正默认文件名时间错误
+* 移除相机权限申请
+* 调整结果回调方式
+
+[查看以往版本说明](https://github.com/mehayou/PhotoSelector/releases)
