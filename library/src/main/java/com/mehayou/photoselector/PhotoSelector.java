@@ -547,7 +547,7 @@ public class PhotoSelector {
 
         private File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
 
-        private String fileNameFormat = "yyyymmddhhmmssSSS";
+        private String fileNameFormat = "'PS'_yyyyMMdd_hhmmssSSS";
         private Bitmap.CompressFormat compressFormat = Bitmap.CompressFormat.JPEG;
 
         private Context context;
@@ -586,22 +586,11 @@ public class PhotoSelector {
         /**
          * 创建选择器
          *
-         * @param result 返回结果选择
+         * @param callback 结果回调
          * @return PhotoSelector
          */
-        public PhotoSelector create(Result result) {
-            this.result = result;
-            return new PhotoSelector(this);
-        }
-
-        /**
-         * 创建选择器
-         *
-         * @param callback 图片文件回调
-         * @return PhotoSelector
-         */
-        public PhotoSelector create(PhotoSelector.ResultCallback<File> callback) {
-            this.result = ResultFactory.callbackFile(callback);
+        public <T> PhotoSelector create(PhotoSelector.ResultCallback<T> callback) {
+            this.result = ResultFactory.callback(callback);
             return new PhotoSelector(this);
         }
 
