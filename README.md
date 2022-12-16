@@ -14,17 +14,17 @@
 * 多种回调结果类型可选（Flie、byte[]、Bitmap、Drawable、String）
 
 ## 依赖
-参照最终版本名称替换下面的“releases”
+亦可用当前版本号[![](https://img.shields.io/github/release/mehayou/photoselector.svg?color=red)](https://github.com/mehayou/PhotoSelector/releases)替换下方“latest.release”，如“1.0.3”
 #### Gradle
 ```java
-implementation 'com.mehayou:photoselector:releases'
+implementation 'com.mehayou:photoselector:latest.release'
 ```
 #### Maven
 ```
 <dependency>
   <groupId>com.mehayou</groupId>
   <artifactId>photoselector</artifactId>
-  <version>releases</version>
+  <version>latest.release</version>
   <type>pom</type>
 </dependency>
 ```
